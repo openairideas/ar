@@ -1,14 +1,22 @@
 body {
     font-family: Arial, sans-serif;
     text-align: center;
+    margin: 0;
+    overflow: hidden;
 }
 video, canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
     width: 640px;
     height: 480px;
     border: 1px solid #ccc;
 }
 #response {
-    margin-top: 20px;
+    position: absolute;
+    top: 500px;
+    left: 50%;
+    transform: translateX(-50%);
     font-size: 24px;
     color: green;
 }
