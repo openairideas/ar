@@ -5,13 +5,21 @@ const ctx = canvas.getContext('2d');
 const responseDiv = document.getElementById('response');
 
 // Set canvas dimensions to match video feed
-canvas.width = 640;
-canvas.height = 480;
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
 
-// Function to set up the webcam
+// Three.js variables
+let scene, camera, renderer, cube;
+
+// Function to set up the webcam (with back camera)
 async function setupWebcam() {
     try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const constraints = {
+            video: {
+                facingMode: { exact: "environment" } // Use the back camera
+            }
+        };
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
         video.srcObject = stream;
         return new Promise((resolve) => {
             video.onloadedmetadata = () => {
@@ -20,7 +28,7 @@ async function setupWebcam() {
         });
     } catch (error) {
         console.error("Error accessing the webcam:", error);
-        alert("Unable to access the webcam. Please ensure it is connected and permissions are granted.");
+        alert("Unable to access the back camera. Please ensure it is connected and permissions are granted.");
     }
 }
 
@@ -34,6 +42,27 @@ async function loadHandposeModel() {
         console.error("Error loading the Handpose model:", error);
         alert("Failed to load the Handpose model. Please check your internet connection.");
     }
+}
+
+// Function to initialize Three.js scene
+function initThreeJS() {
+    // Create a scene
+    scene = new THREE.Scene();
+
+    // Create a camera
+    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.z = 5;
+
+    // Create a renderer
+    renderer = new THREE.WebGLRenderer({ alpha: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // Create a 3D cube
+    const geometry = new THREE.BoxGeometry();
+    const material = new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true });
+    cube = new THREE.Mesh(geometry, material);
+    scene.add(cube);
 }
 
 // Function to detect hand gestures
@@ -51,8 +80,8 @@ async function detectHandGestures(model) {
         const landmarks = predictions[0].landmarks;
         drawHand(landmarks);
 
-        // Check for specific gestures
-        checkGesture(landmarks);
+        // Control 3D object based on hand position
+        control3DObject(landmarks);
     } else {
         responseDiv.textContent = "No hand detected.";
     }
@@ -72,38 +101,37 @@ function drawHand(landmarks) {
     }
 }
 
-// Function to check for specific gestures
-function checkGesture(landmarks) {
-    // Get key landmarks
-    const thumbTip = landmarks[4];  // Thumb tip
-    const indexTip = landmarks[8];  // Index finger tip
-    const middleTip = landmarks[12]; // Middle finger tip
-    const ringTip = landmarks[16];  // Ring finger tip
-    const pinkyTip = landmarks[20]; // Pinky finger tip
+// Function to control 3D object based on hand position
+function control3DObject(landmarks) {
+    // Get the index finger tip position
+    const indexTip = landmarks[8]; // Index finger tip landmark
 
-    // Check for "Open Hand" gesture
-    const isHandOpen = thumbTip[1] < indexTip[1] && indexTip[1] < middleTip[1] && middleTip[1] < ringTip[1] && ringTip[1] < pinkyTip[1];
+    // Map hand position to 3D object position
+    const x = (indexTip[0] / canvas.width) * 4 - 2; // Map X coordinate
+    const y = -(indexTip[1] / canvas.height) * 4 + 2; // Map Y coordinate
 
-    // Check for "Closed Fist" gesture
-    const isHandClosed = thumbTip[1] > indexTip[1] && indexTip[1] > middleTip[1] && middleTip[1] > ringTip[1] && ringTip[1] > pinkyTip[1];
+    // Update cube position
+    cube.position.x = x;
+    cube.position.y = y;
 
-    // Update response based on gesture
-    if (isHandOpen) {
-        responseDiv.textContent = "Hand Open Detected! 🖐️";
-    } else if (isHandClosed) {
-        responseDiv.textContent = "Closed Fist Detected! ✊";
-    } else {
-        responseDiv.textContent = "No specific gesture detected.";
-    }
+    // Rotate the cube
+    cube.rotation.x += 0.01;
+    cube.rotation.y += 0.01;
+
+    // Render the scene
+    renderer.render(scene, camera);
 }
 
 // Initialize the project
 async function init() {
-    // Set up the webcam
+    // Set up the webcam (back camera)
     await setupWebcam();
 
     // Load the Handpose model
     const model = await loadHandposeModel();
+
+    // Initialize Three.js
+    initThreeJS();
 
     // Start detecting hand gestures
     detectHandGestures(model);
