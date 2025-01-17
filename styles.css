@@ -1,0 +1,14 @@
+body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+}
+video, canvas {
+    width: 640px;
+    height: 480px;
+    border: 1px solid #ccc;
+}
+#response {
+    margin-top: 20px;
+    font-size: 24px;
+    color: green;
+}
